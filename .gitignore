@@ -1,0 +1,5 @@
+venv/
+.idea/
+cifar-10-python/
+*.pyc
+*.tar.gz
