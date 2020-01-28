@@ -3,3 +3,4 @@ venv/
 cifar-10-python/
 *.pyc
 *.tar.gz
+*.h5
