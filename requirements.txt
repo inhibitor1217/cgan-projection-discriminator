@@ -1,5 +1,5 @@
 setuptools
-tensorflow-gpu
+tensorflow
 matplotlib
 h5py
 tqdm

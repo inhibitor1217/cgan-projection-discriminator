@@ -15,6 +15,7 @@ DATASET_Y          = 'labels'
 NUM_BATCHES    = len(CIFAR10_DATA_FILES)
 BATCH_SIZE     = 10000
 NUM_TRAIN      = NUM_BATCHES * BATCH_SIZE
+NUM_TRAIN = 1
 IMAGE_SIZE     = (32, 32)
 IMAGE_PIXELS   = IMAGE_SIZE[0] * IMAGE_SIZE[1]
 IMAGE_CHANNELS = 3
@@ -46,8 +47,8 @@ class CIFAR10DataLoader():
                 )
                 labels[np.arange(i*BATCH_SIZE, (i+1)*BATCH_SIZE), labels_batch] = 1.
 
-            h5_file.create_dataset(DATASET_X, data=data)
-            h5_file.create_dataset(DATASET_Y, data=labels)
+            h5_file.create_dataset(DATASET_X, data=data[1:2])
+            h5_file.create_dataset(DATASET_Y, data=labels[1:2])
             h5_file.close()
 
     def generator(self, shuffle=True):
@@ -64,18 +65,23 @@ class CIFAR10DataLoader():
         return _generator(shuffle), NUM_TRAIN
 
     def batch_generator(self, batch_size, shuffle=True, remainder=True):
-        def _generator(shuffle):
-            single_gen, _ = self.generator(shuffle)
-            batch_x = []
-            batch_y = []
-            for x, y in single_gen:
-                batch_x.append(x)
-                batch_y.append(y)
-                if len(batch_x) == batch_size:
-                    yield np.array(batch_x), np.array(batch_y)
-                    del batch_x[:]
-                    del batch_y[:]
-            if remainder and len(batch_x) > 0:
-                yield np.array(batch_x), np.array(batch_y)
         steps = math.ceil(NUM_TRAIN / batch_size) if remainder else (NUM_TRAIN // batch_size)
+        steps = 1
+        def _generator(shuffle):
+            with h5py.File(H5_FILE, 'r+') as h5_file:
+                seed = (id(self) + os.getpid() + int(datetime.now().strftime("%Y%m%d%H%M%S%f"))) % 4294967295
+                np.random.seed(seed)
+                if shuffle:
+                    indices = np.arange(h5_file[DATASET_X].shape[0])
+                    np.random.shuffle(indices)
+                    h5_file[DATASET_X][...] = h5_file[DATASET_X][...][indices]
+                    h5_file[DATASET_Y][...] = h5_file[DATASET_Y][...][indices]
+                for i in range(steps):
+                    if remainder and i == (steps - 1):
+                        yield h5_file[DATASET_X][i*batch_size:], \
+                              h5_file[DATASET_Y][i*batch_size:]
+                    else:
+                        yield h5_file[DATASET_X][i*batch_size:(i+1)*batch_size], \
+                              h5_file[DATASET_Y][i*batch_size:(i+1)*batch_size]
+                h5_file.close()
         return _generator(shuffle), steps
