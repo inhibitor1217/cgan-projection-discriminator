@@ -18,6 +18,7 @@ NUM_TRAIN      = NUM_BATCHES * BATCH_SIZE
 IMAGE_SIZE     = (32, 32)
 IMAGE_PIXELS   = IMAGE_SIZE[0] * IMAGE_SIZE[1]
 IMAGE_CHANNELS = 3
+NUM_CLASSES    = 10
 
 def unpickle(file):
     with open(file, 'rb') as f:
@@ -32,7 +33,7 @@ class CIFAR10DataLoader():
     def preprocess(self, files=CIFAR10_DATA_FILES):
         with h5py.File(H5_FILE, 'w') as h5_file:
             data   = np.zeros(shape=(NUM_TRAIN, *IMAGE_SIZE, IMAGE_CHANNELS), dtype=np.float32)
-            labels = np.zeros(shape=(NUM_TRAIN,), dtype=int)
+            labels = np.zeros(shape=(NUM_TRAIN, NUM_CLASSES), dtype=int)
             for i, file in enumerate(tqdm(files)):
                 file_path = f'{CIFAR10_DATA_PATH}{file}'
                 batch = unpickle(file_path)
@@ -43,7 +44,7 @@ class CIFAR10DataLoader():
                     np.reshape(normalize_image(data_batch), (BATCH_SIZE, IMAGE_CHANNELS, *IMAGE_SIZE)),
                     1, -1
                 )
-                labels[i*BATCH_SIZE:(i+1)*BATCH_SIZE] = labels_batch
+                labels[np.arange(i*BATCH_SIZE, (i+1)*BATCH_SIZE), labels_batch] = 1.
 
             h5_file.create_dataset(DATASET_X, data=data)
             h5_file.create_dataset(DATASET_Y, data=labels)
